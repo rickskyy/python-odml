@@ -3,8 +3,9 @@ import uuid
 from abc import ABC, abstractmethod
 
 import odml
+from odml.tools.rdf_converter import RDFWriter
 
-RANDOM_MAX = 10000000
+RANDOM_MAX = 1000000000  # might be collisions so better change to uuid
 MAX_VALUE_LIST_NUMBER = 5
 MAX_PROPERTY_LIST_NUMBER = 6
 MIN_NUMBER_OF_ENTITIES_ON_THE_LEVEL = 2
@@ -22,12 +23,12 @@ def first_list_elem(list_obj):
     return list_obj[0]
 
 
-def crete_string_value(key):
-    return key + '-' + str(random.randint(0, RANDOM_MAX))
+def crete_string_value(key, level):
+    return key + '-lv-' + str(level) + '-' + str(random.randint(0, RANDOM_MAX))
 
 
-def create_string_values_list(key):
-    return [key + '-' + str(random.randint(0, RANDOM_MAX)) for _ in range(random.randint(0, MAX_VALUE_LIST_NUMBER))]
+def create_string_values_list(key, level):
+    return [key + '-lv-' + str(level) + '-' + str(random.randint(0, RANDOM_MAX)) for _ in range(random.randint(0, MAX_VALUE_LIST_NUMBER))]
 
 
 def create_int_value():
@@ -45,11 +46,11 @@ def create_int_values_list():
     return [random.randint(0, RANDOM_MAX) for _ in range(random.randint(0, MAX_VALUE_LIST_NUMBER))]
 
 
-def generate_entity_list(entity, gen_func, n, entity_list=None):
+def generate_entity_list(entity, gen_func, n, level, entity_list=None):
     if entity_list is None:
         entity_list = []
     for _ in range(n):
-        entity_list.append(gen_func(entity))
+        entity_list.append(gen_func(entity, level))
 
     return entity_list
 
@@ -64,8 +65,9 @@ class OdmlEntityExamples(ABC):
     def create_random_from_samples(self, **kwargs):
         pass
 
+    # TODO move possible level to **kwargs, maybe other params would need to passed for generation
     @abstractmethod
-    def create_random(self):
+    def create_random(self, level):
         pass
 
     def fill_kwargs(self, obj, **kwargs):
@@ -84,7 +86,7 @@ class OdmlEntityExamples(ABC):
 
         return return_obj
 
-    def _get_full_random_obj_dict(self, example):
+    def _get_full_random_obj_dict(self, example, level):
         return_obj = {}
 
         for key, value in example.obj.items():
@@ -97,9 +99,11 @@ class OdmlEntityExamples(ABC):
                 return_obj['value'] = create_int_values_list()
             elif isinstance(example, PropertyExample) and example.obj['dtype'][0] == 'string':
                 return_obj['dtype'] = 'string'
-                return_obj['value'] = create_string_values_list('val')
+                return_obj['value'] = create_string_values_list('val', level)
+            # elif isinstance(example, DocExample) and key == 'repository':
+            #     return_obj['repository'] = 'repo1'
             else:
-                return_obj[key] = crete_string_value(key)
+                return_obj[key] = crete_string_value(key, level)
 
         return_obj['oid'] = str(uuid.uuid4())
 
@@ -113,7 +117,7 @@ class DocExample(OdmlEntityExamples):
             'version': ['1.0', '1.1', '1.2'],
             'author': ['Prof Jones', 'Dr Mc Gregory'],
             'date': ['2000-01-01', '2000-02-02'],
-            'repository': ['rep1', 'rep2'],
+            # 'repository': ['rep1'],
         }
 
         self.fill_kwargs(self.obj, **kwargs)
@@ -124,8 +128,8 @@ class DocExample(OdmlEntityExamples):
     def create_random_from_samples(self, **kwargs):
         return odml.Document(**self._get_obj_dict(self, random_list_elem))
 
-    def create_random(self):
-        return odml.Document(**self._get_full_random_obj_dict(self))
+    def create_random(self, level):
+        return odml.Document(**self._get_full_random_obj_dict(self, level))
 
 
 class SectionExample(OdmlEntityExamples):
@@ -135,7 +139,6 @@ class SectionExample(OdmlEntityExamples):
             'type': ['hardware', 'settings', 'DataAcquisition'],
             'name': ['exp-details1', 'exp-details2', 'exp-details3'],
             'definition': ['def1', 'def2'],
-            'repository': ['rep1', 'rep2'],
         }
 
         self.fill_kwargs(self.obj, **kwargs)
@@ -146,12 +149,13 @@ class SectionExample(OdmlEntityExamples):
     def create_random_from_samples(self, **kwargs):
         return odml.Section(**self._get_obj_dict(self, random_list_elem))
 
-    def create_random(self):
-        s = odml.Section(**self._get_full_random_obj_dict(self))
+    def create_random(self, level):
+        s = odml.Section(**self._get_full_random_obj_dict(self, level))
         # need this because there is no way to specify property field in constructor
         generate_entity_list(PropertyExample(),
                              PropertyExample.create_random,
                              random.randint(1, MAX_PROPERTY_LIST_NUMBER),
+                             level,
                              entity_list=s)
         return s
 
@@ -181,8 +185,8 @@ class PropertyExample(OdmlEntityExamples):
     def create_random_from_samples(self, **kwargs):
         raise NotImplementedError("In method " + self.create_random_from_samples.__name__)
 
-    def create_random(self):
-        return odml.Property(**self._get_full_random_obj_dict(self))
+    def create_random(self, level):
+        return odml.Property(**self._get_full_random_obj_dict(self, level))
 
 
 class OdmlFilesGenerator:
@@ -196,8 +200,8 @@ class OdmlFilesGenerator:
         self.max_sec_prop_children = None
         self.tree = []
 
-    def to_rdf(self):
-        pass
+    def to_rdf(self, doc, filename, format='turtle'):
+        RDFWriter(doc).write_file(filename, format)
 
     def _add_sections(self):
         pass
@@ -281,7 +285,10 @@ class OdmlFilesGenerator:
             if current_level_n > width:
                 current_level_n = width
 
-            self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, current_level_n))
+            self.tree.append(generate_entity_list(SectionExample(),
+                                                  SectionExample.create_random,
+                                                  current_level_n,
+                                                  height - levels_left))
 
             entities_left -= current_level_n
             level_max = int(entities_left / levels_left)
@@ -294,18 +301,20 @@ class OdmlFilesGenerator:
                 break
 
         if entities_left > width:
-            self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, width))
+            self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, width, height - levels_left))
         elif entities_left > MIN_NUMBER_OF_ENTITIES_ON_THE_LEVEL:
-            self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, entities_left))
+            self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, entities_left, height - levels_left))
 
         # append max level, might be any level
-        self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, width))
+        self.tree.append(generate_entity_list(SectionExample(), SectionExample.create_random, width, height - levels_left + 1))
 
         self.tree = self._merge_entities(self.tree)
 
-        doc = DocExample().create_random()
+        doc = DocExample().create_random(0)
         for s in self.tree[0]:
             doc.append(s)
+
+        self.tree = []
 
         return doc
 
@@ -323,15 +332,23 @@ class OdmlFilesGenerator:
         pass
 
     def testg(self):
-        # a = self._generate_entity_list(SectionExample(), SectionExample.create_random, 10)
-        # print(a)
         import time
         c = time.time()
         doc = self.generate_by_width_height_entitiesnumber(width=10, height=6, number_entities=30, randomness=None)
         print(time.time() - c)
 
-        import pprint
-        pprint.pprint(doc)
+        # pprint.pprint(doc)
+        self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w10h6n30.ttl")
+
+        # c = time.time()
+        # doc = self.generate_by_width_height_entitiesnumber(width=500, height=100, number_entities=3000, randomness=None)
+        # print(time.time() - c)
+        # self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w500h100n3000.ttl")
+
+        # c = time.time()
+        # doc = self.generate_by_width_height_entitiesnumber(width=5000, height=300, number_entities=30000, randomness=None)
+        # print(time.time() - c)
+        # self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w5000h200n30000.xml", format='xml')
 
 
 OdmlFilesGenerator().testg()
