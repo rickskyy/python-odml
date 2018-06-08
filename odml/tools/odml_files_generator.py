@@ -94,12 +94,14 @@ class OdmlEntityExamples(ABC):
                 pass
             elif key == 'date':
                 return_obj[key] = create_random_date()
-            elif isinstance(example, PropertyExample) and example.obj['dtype'][0] == 'int':
-                return_obj['dtype'] = 'int'
-                return_obj['value'] = create_int_values_list()
-            elif isinstance(example, PropertyExample) and example.obj['dtype'][0] == 'string':
-                return_obj['dtype'] = 'string'
-                return_obj['value'] = create_string_values_list('val', level)
+            elif key == 'dtype':
+                t = random.randint(0, 1)
+                if value[t] == 'int':
+                    return_obj['dtype'] = 'int'
+                    return_obj['value'] = create_int_values_list()
+                elif value[t] == 'string':
+                    return_obj['dtype'] = 'string'
+                    return_obj['value'] = create_string_values_list('val', level)
             # elif isinstance(example, DocExample) and key == 'repository':
             #     return_obj['repository'] = 'repo1'
             else:
@@ -112,15 +114,15 @@ class OdmlEntityExamples(ABC):
 
 class DocExample(OdmlEntityExamples):
 
-    def __init__(self, **kwargs):
-        self.obj = {
-            'version': ['1.0', '1.1', '1.2'],
-            'author': ['Prof Jones', 'Dr Mc Gregory'],
-            'date': ['2000-01-01', '2000-02-02'],
-            # 'repository': ['rep1'],
-        }
+    # def __init__(self, **kwargs):
+    obj = {
+        'version': ['1.0', '1.1', '1.2'],
+        'author': ['Prof Jones', 'Dr Mc Gregory'],
+        'date': ['2000-01-01', '2000-02-02'],
+        # 'repository': ['rep1'],
+    }
 
-        self.fill_kwargs(self.obj, **kwargs)
+    # self.fill_kwargs(self.obj, **kwargs)
 
     def create_from_samples(self, **kwargs):
         return odml.Document(**self._get_obj_dict(self, first_list_elem))
@@ -129,19 +131,19 @@ class DocExample(OdmlEntityExamples):
         return odml.Document(**self._get_obj_dict(self, random_list_elem))
 
     def create_random(self, level):
-        return odml.Document(**self._get_full_random_obj_dict(self, level))
+        return odml.Document(**self._get_full_random_obj_dict(DocExample, level))
 
 
 class SectionExample(OdmlEntityExamples):
 
-    def __init__(self, **kwargs):
-        self.obj = {
-            'type': ['hardware', 'settings', 'DataAcquisition'],
-            'name': ['exp-details1', 'exp-details2', 'exp-details3'],
-            'definition': ['def1', 'def2'],
-        }
+    # def __init__(self, **kwargs):
+    obj = {
+        'type': ['hardware', 'settings', 'DataAcquisition'],
+        'name': ['exp-details1', 'exp-details2', 'exp-details3'],
+        'definition': ['def1', 'def2'],
+    }
 
-        self.fill_kwargs(self.obj, **kwargs)
+    # self.fill_kwargs(self.obj, **kwargs)
 
     def create_from_samples(self, **kwargs):
         return odml.Section(**self._get_obj_dict(self, first_list_elem))
@@ -150,7 +152,7 @@ class SectionExample(OdmlEntityExamples):
         return odml.Section(**self._get_obj_dict(self, random_list_elem))
 
     def create_random(self, level):
-        s = odml.Section(**self._get_full_random_obj_dict(self, level))
+        s = odml.Section(**self._get_full_random_obj_dict(SectionExample, level))
         # need this because there is no way to specify property field in constructor
         generate_entity_list(PropertyExample(),
                              PropertyExample.create_random,
@@ -162,16 +164,16 @@ class SectionExample(OdmlEntityExamples):
 
 class PropertyExample(OdmlEntityExamples):
 
-    def __init__(self, **kwargs):
-        self.obj = {
-            'name': [],
-            'unit': [],
-            'definition': [],
-            'dtype': [random.choice(('string', 'int'))],  # randomly choosing of a new property
-            'value': {'string': [], 'int': []}
-        }
+    # def __init__(self, **kwargs):
+    obj = {
+        'name': [],
+        'unit': [],
+        'definition': [],
+        'dtype': ['string', 'int'],  # randomly choosing of a new property
+        'value': {'string': [], 'int': []}
+    }
 
-        self.fill_kwargs(self.obj, **kwargs)
+    # self.fill_kwargs(self.obj, **kwargs)
 
     def create_from_samples(self, **kwargs):
         """
@@ -186,7 +188,7 @@ class PropertyExample(OdmlEntityExamples):
         raise NotImplementedError("In method " + self.create_random_from_samples.__name__)
 
     def create_random(self, level):
-        return odml.Property(**self._get_full_random_obj_dict(self, level))
+        return odml.Property(**self._get_full_random_obj_dict(PropertyExample, level))
 
 
 class OdmlFilesGenerator:
@@ -350,6 +352,14 @@ class OdmlFilesGenerator:
         # print(time.time() - c)
         # self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w5000h200n30000.xml", format='xml')
 
+    def wr(self):
+        from odml.tools.rdf_converter import RDFReader
+        from odml.tools.odmlparser import ODMLWriter
 
+        docs = RDFReader().from_file("/home/rick/g-node/python-odml/doc/generated/w10h6n30.ttl", "turtle")
+
+        ODMLWriter().write_file(docs[0], "/home/rick/g-node/python-odml/doc/generated/odmls/w10h6n30.odml")
+
+# OdmlFilesGenerator().wr()
 OdmlFilesGenerator().testg()
 
