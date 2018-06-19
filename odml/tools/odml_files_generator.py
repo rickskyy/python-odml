@@ -1,3 +1,4 @@
+import os
 import random
 import uuid
 from abc import ABC, abstractmethod
@@ -335,22 +336,22 @@ class OdmlFilesGenerator:
 
     def testg(self):
         import time
-        c = time.time()
-        doc = self.generate_by_width_height_entitiesnumber(width=10, height=6, number_entities=30, randomness=None)
-        print(time.time() - c)
+        # c = time.time()
+        # doc = self.generate_by_width_height_entitiesnumber(width=10, height=6, number_entities=30, randomness=None)
+        # print(time.time() - c)
 
         # pprint.pprint(doc)
-        self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w10h6n30.ttl")
+        # self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w10h6n30.ttl")
 
         # c = time.time()
         # doc = self.generate_by_width_height_entitiesnumber(width=500, height=100, number_entities=3000, randomness=None)
         # print(time.time() - c)
         # self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w500h100n3000.ttl")
 
-        # c = time.time()
-        # doc = self.generate_by_width_height_entitiesnumber(width=5000, height=300, number_entities=30000, randomness=None)
-        # print(time.time() - c)
-        # self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w5000h200n30000.xml", format='xml')
+        c = time.time()
+        doc = self.generate_by_width_height_entitiesnumber(width=5000, height=300, number_entities=30000, randomness=None)
+        print(time.time() - c)
+        self.to_rdf(doc, "/home/rick/g-node/python-odml/doc/generated/w5000h200n30000.ttl", format='ttl')
 
     def wr(self):
         from odml.tools.rdf_converter import RDFReader
@@ -360,6 +361,16 @@ class OdmlFilesGenerator:
 
         ODMLWriter().write_file(docs[0], "/home/rick/g-node/python-odml/doc/generated/odmls/w10h6n30.odml")
 
+    def generate_docs(self, s, n):
+        path = os.path.dirname(os.path.dirname(os.getcwd())) + '/doc/gen'
+
+        for i in range(s, n):
+            doc = self.generate_by_width_height_entitiesnumber(width=5000, height=300, number_entities=30000,
+                                                               randomness=None)
+            self.to_rdf(doc, path + "/w5000h200n30000-{i}.ttl".format(i=i), format='ttl')
+
 # OdmlFilesGenerator().wr()
-OdmlFilesGenerator().testg()
+# OdmlFilesGenerator().testg()
+
+OdmlFilesGenerator().generate_docs(3, 100)
 
