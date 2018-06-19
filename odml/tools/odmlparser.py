@@ -7,15 +7,15 @@ Parses odML files and documents.
 
 import datetime
 import json
+
 import yaml
 
 from . import xmlparser
 from .dict_parser import DictWriter, DictReader
-from ..info import FORMAT_VERSION
 from .parser_utils import ParserException
 from .parser_utils import SUPPORTED_PARSERS
 from .rdf_converter import RDFReader, RDFWriter
-from ..validation import Validation
+from ..info import FORMAT_VERSION
 
 
 class ODMLWriter:
@@ -38,11 +38,11 @@ class ODMLWriter:
 
     def write_file(self, odml_document, filename):
         # Write document only if it does not contain validation errors.
-        validation = Validation(odml_document)
+        # validation = Validation(odml_document)
         msg = ""
-        for err in validation.errors:
-            if err.is_error:
-                msg += "\n\t- %s %s: %s" % (err.obj, err.type, err.msg)
+        # for err in validation.errors:
+        #     if err.is_error:
+        #         msg += "\n\t- %s %s: %s" % (err.obj, err.type, err.msg)
         if msg != "":
             msg = "Resolve document validation errors before saving %s" % msg
             raise ParserException(msg)
